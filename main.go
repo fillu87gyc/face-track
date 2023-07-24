@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/fillu87gyc/face-track/config"
@@ -27,7 +27,21 @@ func main() {
 	e.Use(MiddleWareLogger(logger))
 	e.Use(gin.Recovery())
 	e.POST("/drive/", drive)
+	e.GET("/facepos/:x/:y", okao)
 	_ = e.Run(":3333")
+}
+
+var faceX float64 = 0.5
+var faceY float64 = 0.5
+
+func okao(c *gin.Context) {
+	x := c.Param("x")
+	y := c.Param("y")
+	faceX, _ = strconv.ParseFloat(x, 64)
+	faceX = 1 - faceX
+	faceY, _ = strconv.ParseFloat(y, 64)
+	// logger.GetLogger().Info("今顔の座標を受け取った" + x + " " + y)
+	c.JSON(http.StatusOK, gin.H{"x": x, "y": y})
 }
 
 var nodFlag bool = false
@@ -41,32 +55,9 @@ func nodRoutine() {
 	for range ticker.C {
 		if nodFlag {
 			fmt.Println("Nod!")
-			SendPose("nod")
+			_ = SendPose("nod")
 		}
 	}
-}
-
-func getFacePos() (float64, float64, error) {
-	url := config.OkaoVisionURL
-	query := "/face/"
-	resp, err := http.Get(url + query)
-	if err != nil {
-		fmt.Println("Error: ", err)
-		return 0, 0, err
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-
-	var facePos struct {
-		X float64 `json:"x"`
-		Y float64 `json:"y"`
-	}
-	// 顔の座標情報を取得
-	if err := json.Unmarshal(body, &facePos); err != nil {
-		fmt.Println("Error: ", err)
-		return 0.5, 0.5, err
-	}
-	return float64(facePos.X), float64(facePos.Y), nil
 }
 
 func SendPose(pose string) error {
@@ -95,18 +86,13 @@ func trackRoutine() {
 	for range ticker.C {
 		if trackFlag {
 			//顔の座標情報を取得
-			x, y, err := getFacePos()
-			if err != nil {
-				fmt.Println("Error: ", err)
-			}
 			url := config.MotorServerURL
-			query := fmt.Sprintf("/takubo/pose/%v/%v/%v", x, y, -1)
-			_, err = http.Get(url + query)
-			if err != nil {
+			query := fmt.Sprintf("/takubo/pose/%v/%v/%v", faceX, faceY, -1)
+			if _, err := http.Get(url + query); err != nil {
 				fmt.Println("Error: ", err)
 			}
 			if trackFlag {
-				logger.GetLogger().Info("今顔おくった")
+				logger.GetLogger().Info("今顔おくった :" + query)
 			} else {
 				logger.GetLogger().Info("みつけてよかったばぐのもと")
 			}
@@ -166,12 +152,12 @@ func drive(c *gin.Context) {
 func MiddleWareLogger(l *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
-		l.Info("",
-			zap.Int("status", c.Writer.Status()),
-			zap.String("method", c.Request.Method),
-			zap.String("path", c.Request.URL.Path),
-			zap.String("query", c.Request.URL.RawQuery),
-			zap.String("errors", c.Errors.ByType(gin.ErrorTypePrivate).String()),
-		)
+		// l.Info("",
+		// 	zap.Int("status", c.Writer.Status()),
+		// 	zap.String("method", c.Request.Method),
+		// 	zap.String("path", c.Request.URL.Path),
+		// 	zap.String("query", c.Request.URL.RawQuery),
+		// 	zap.String("errors", c.Errors.ByType(gin.ErrorTypePrivate).String()),
+		// )
 	}
 }
