@@ -31,21 +31,89 @@ func main() {
 	_ = e.Run(":3333")
 }
 
-var faceX float64 = 0.5
-var faceY float64 = 0.5
+var faceX int = maxX / 2
+var faceY int = maxY / 2
+
+const (
+	//どれくらい中央として判定するかの許容値
+	allowRangeX = 30
+	allowRangeY = 10
+	xGain       = 8
+	yGain       = 10
+	maxX        = 640
+	maxY        = 480
+)
+
+func isRangeX(x, maxX int) bool {
+	return x < maxX/2+allowRangeX && x > maxX/2-allowRangeX
+}
+func isRangeY(y, maxY int) bool {
+	return y < maxY/2+allowRangeY && y > maxY/2-allowRangeY
+}
 
 func okao(c *gin.Context) {
+
+	c.JSON(http.StatusOK, gin.H{"x": faceX, "y": faceY})
+	c.Abort()
+
+	if !trackFlag {
+		logger.GetLogger().Info("追従じゃないので無視")
+		return
+	}
 	x := c.Param("x")
 	y := c.Param("y")
-	faceX, _ = strconv.ParseFloat(x, 64)
-	faceX = 1 - faceX
-	faceY, _ = strconv.ParseFloat(y, 64)
-	// logger.GetLogger().Info("今顔の座標を受け取った" + x + " " + y)
-	c.JSON(http.StatusOK, gin.H{"x": x, "y": y})
+	ix, _ := strconv.Atoi(x)
+	iy, _ := strconv.Atoi(y)
+
+	if isRangeX(ix, maxX) && isRangeY(iy, maxY) {
+		logger.GetLogger().Info("jast mannaka!!")
+	} else {
+		if isRangeY(ix, maxX) {
+			//顔のx座標が中央にある
+			logger.GetLogger().Info("顔のx座標が中央にある")
+		} else {
+			//顔のx座標が中央にない
+			if ix < maxX/2 {
+				//顔が右にある
+				faceX += xGain
+				if faceX > maxX {
+					faceX = maxX
+				}
+			} else {
+				//顔が左にある
+				faceX -= xGain
+				if faceX < 0 {
+					faceX = 0
+				}
+			}
+		}
+
+		if isRangeY(iy, maxY) {
+			//顔のy座標が中央にある
+			logger.GetLogger().Info("顔のy座標が中央にある")
+		} else {
+			//顔のy座標が中央にない
+			if iy < maxY/2 {
+				//顔が下にある
+				faceY += yGain
+				if faceY > maxY {
+					faceY = maxY
+				}
+			} else {
+				//顔が上にある
+				faceY -= yGain
+				if faceY < 0 {
+					faceY = 0
+				}
+			}
+		}
+	}
+
+	logger.GetLogger().Info(fmt.Sprintf("faceX: %v, faceY: %v", faceX, faceY))
 }
 
 var nodFlag bool = false
-var trackFlag bool = false
+var trackFlag bool = true
 
 func nodRoutine() {
 	// 3秒ごとにHTTP GETを送信
@@ -83,16 +151,18 @@ func trackRoutine() {
 	ticker := time.NewTicker(50 * time.Microsecond)
 	defer ticker.Stop()
 	// 無限ループで定期的に処理を行う
+	faceX = maxX / 2
+	faceY = maxY / 2
 	for range ticker.C {
 		if trackFlag {
 			//顔の座標情報を取得
 			url := config.MotorServerURL
-			query := fmt.Sprintf("/takubo/pose/%v/%v/%v", faceX, faceY, -1)
+			query := fmt.Sprintf("/takubo/pose/%v/%v/%v", float64(faceX)/maxX, float64(faceY)/maxY, -1)
 			if _, err := http.Get(url + query); err != nil {
 				fmt.Println("Error: ", err)
 			}
 			if trackFlag {
-				logger.GetLogger().Info("今顔おくった :" + query)
+				// logger.GetLogger().Info("                                今顔おくった :" + query)
 			} else {
 				logger.GetLogger().Info("みつけてよかったばぐのもと")
 			}
