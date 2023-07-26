@@ -34,11 +34,14 @@ func main() {
 var faceX int = maxX / 2
 var faceY int = maxY / 2
 
+var ix = maxX / 2
+var iy = maxY / 2
+
 const (
 	//どれくらい中央として判定するかの許容値
 	allowRangeX = 30
 	allowRangeY = 10
-	xGain       = 8
+	xGain       = 6
 	yGain       = 10
 	maxX        = 640
 	maxY        = 480
@@ -52,7 +55,6 @@ func isRangeY(y, maxY int) bool {
 }
 
 func okao(c *gin.Context) {
-
 	c.JSON(http.StatusOK, gin.H{"x": faceX, "y": faceY})
 	c.Abort()
 
@@ -62,9 +64,13 @@ func okao(c *gin.Context) {
 	}
 	x := c.Param("x")
 	y := c.Param("y")
-	ix, _ := strconv.Atoi(x)
-	iy, _ := strconv.Atoi(y)
+	ix, _ = strconv.Atoi(x)
+	iy, _ = strconv.Atoi(y)
 
+	// logger.GetLogger().Info(fmt.Sprintf("faceX: %v, faceY: %v", faceX, faceY))
+}
+
+func updateFaceXY() {
 	if isRangeX(ix, maxX) && isRangeY(iy, maxY) {
 		logger.GetLogger().Info("jast mannaka!!")
 	} else {
@@ -108,8 +114,6 @@ func okao(c *gin.Context) {
 			}
 		}
 	}
-
-	logger.GetLogger().Info(fmt.Sprintf("faceX: %v, faceY: %v", faceX, faceY))
 }
 
 var nodFlag bool = false
@@ -131,11 +135,10 @@ func nodRoutine() {
 func SendPose(pose string) error {
 	url := config.MotorServerURL
 	query := fmt.Sprintf("/takubo/preset/%s", pose)
-	resp, err := http.Get(url + query)
-
 	if pose != "nod" {
 		logger.GetLogger().Info("今poseおくった")
 	}
+	resp, err := http.Get(url + query)
 	if err != nil {
 		return err
 	}
@@ -148,25 +151,28 @@ func SendPose(pose string) error {
 }
 
 func trackRoutine() {
-	ticker := time.NewTicker(50 * time.Microsecond)
-	defer ticker.Stop()
+	// ticker := time.NewTicker(20 * time.Microsecond)
+	// defer ticker.Stop()
 	// 無限ループで定期的に処理を行う
 	faceX = maxX / 2
 	faceY = maxY / 2
-	for range ticker.C {
+	for {
 		if trackFlag {
 			//顔の座標情報を取得
-			url := config.MotorServerURL
-			query := fmt.Sprintf("/takubo/pose/%v/%v/%v", float64(faceX)/maxX, float64(faceY)/maxY, -1)
-			if _, err := http.Get(url + query); err != nil {
-				fmt.Println("Error: ", err)
-			}
-			if trackFlag {
-				// logger.GetLogger().Info("                                今顔おくった :" + query)
-			} else {
-				logger.GetLogger().Info("みつけてよかったばぐのもと")
-			}
+			go func() {
+				url := config.MotorServerURL
+				query := fmt.Sprintf("/takubo/pose/%v/%v/%v", float64(faceX)/maxX, float64(faceY)/maxY, -1)
+				resp, err := http.Get(url + query)
+				if err != nil {
+					fmt.Println("Error: ", err)
+					return
+				}
+				defer resp.Body.Close()
+				logger.GetLogger().Info("trackRoutine: " + query)
+			}()
+			updateFaceXY()
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
