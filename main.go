@@ -117,7 +117,7 @@ var trackFlag bool = true
 
 func nodRoutine() {
 	// 3秒ごとにHTTP GETを送信
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	// 無限ループで定期的に処理を行う
 	for range ticker.C {
