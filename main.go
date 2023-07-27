@@ -41,8 +41,11 @@ const (
 	//どれくらい中央として判定するかの許容値
 	allowRangeX = 30
 	allowRangeY = 10
-	xGain       = 6
-	yGain       = 10
+	fineRange   = 30
+	xCourseGain = 10 //ざっくり
+	yCourseGain = 15 //ざっくり
+	xFineGain   = 6  //細かく
+	yFineGain   = 10 //細かく
 	maxX        = 640
 	maxY        = 480
 )
@@ -66,10 +69,18 @@ func okao(c *gin.Context) {
 	y := c.Param("y")
 	ix, _ = strconv.Atoi(x)
 	iy, _ = strconv.Atoi(y)
+	updateFaceXY()
 
 	// logger.GetLogger().Info(fmt.Sprintf("faceX: %v, faceY: %v", faceX, faceY))
 }
 
+// 近くにいるかどうか
+func isInNearRange(pos, MAX int) bool {
+	r := fineRange + allowRangeX
+	inRange := pos < MAX/2+r && pos > MAX/2-r
+	logger.GetLogger().Info(fmt.Sprintf("%d is near? =  %v", pos, inRange))
+	return inRange
+}
 func updateFaceXY() {
 	if isRangeX(ix, maxX) && isRangeY(iy, maxY) {
 		logger.GetLogger().Info("jast mannaka!!")
@@ -81,13 +92,21 @@ func updateFaceXY() {
 			//顔のx座標が中央にない
 			if ix < maxX/2 {
 				//顔が右にある
-				faceX += xGain
+				if isInNearRange(ix, maxX) {
+					faceX += xFineGain
+				} else {
+					faceX += xCourseGain
+				}
 				if faceX > maxX {
 					faceX = maxX
 				}
 			} else {
 				//顔が左にある
-				faceX -= xGain
+				if isInNearRange(ix, maxX) {
+					faceX -= xFineGain
+				} else {
+					faceX -= xCourseGain
+				}
 				if faceX < 0 {
 					faceX = 0
 				}
@@ -101,13 +120,21 @@ func updateFaceXY() {
 			//顔のy座標が中央にない
 			if iy < maxY/2 {
 				//顔が下にある
-				faceY += yGain
+				if isInNearRange(iy, maxY) {
+					faceY += yFineGain
+				} else {
+					faceY += yCourseGain
+				}
 				if faceY > maxY {
 					faceY = maxY
 				}
 			} else {
 				//顔が上にある
-				faceY -= yGain
+				if isInNearRange(iy, maxY) {
+					faceY -= yFineGain
+				} else {
+					faceY -= yCourseGain
+				}
 				if faceY < 0 {
 					faceY = 0
 				}
@@ -170,7 +197,6 @@ func trackRoutine() {
 				defer resp.Body.Close()
 				logger.GetLogger().Info("trackRoutine: " + query)
 			}()
-			updateFaceXY()
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
