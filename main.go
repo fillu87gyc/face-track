@@ -188,7 +188,7 @@ func trackRoutine() {
 			//顔の座標情報を取得
 			go func() {
 				url := config.MotorServerURL
-				query := fmt.Sprintf("/takubo/pose/%v/%v/%v", float64(faceX)/maxX, float64(faceY)/maxY, -1)
+				query := fmt.Sprintf("/takubo/pose/%v/%v/%v", float64(faceX)/maxX, float64(faceY)/maxY, 0.5)
 				resp, err := http.Get(url + query)
 				if err != nil {
 					fmt.Println("Error: ", err)
