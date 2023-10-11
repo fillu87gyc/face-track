@@ -22,6 +22,7 @@ type Pose struct {
 func main() {
 	go nodRoutine()
 	go trackRoutine()
+	go toDefaultPotision()
 	logger := logger.GetLogger()
 	e := gin.New()
 	e.Use(MiddleWareLogger(logger))
@@ -55,6 +56,24 @@ func isRangeX(x, maxX int) bool {
 }
 func isRangeY(y, maxY int) bool {
 	return y < maxY/2+allowRangeY && y > maxY/2-allowRangeY
+}
+
+func toDefaultPotision() {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		//顔を中央方向に戻す
+		if faceX > maxX/2 {
+			faceX -= xCourseGain
+		} else {
+			faceX += xCourseGain
+		}
+		if faceY > maxY/2 {
+			faceY -= yCourseGain
+		} else {
+			faceY += yCourseGain
+		}
+	}
 }
 
 func okao(c *gin.Context) {
@@ -172,7 +191,7 @@ func SendPose(pose string) error {
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil || resp.StatusCode != http.StatusOK || string(body) != "OK" {
-		return fmt.Errorf("Error: %v, StatusCode: %v, Body: %v", err, resp.StatusCode, string(body))
+		return fmt.Errorf("error: %s, statusCode: %d, body: %s", err, resp.StatusCode, string(body))
 	}
 	return nil
 }
