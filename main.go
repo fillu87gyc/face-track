@@ -59,19 +59,17 @@ func isRangeY(y, maxY int) bool {
 }
 
 func toDefaultPotision() {
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
+	oldX, oldY := maxX/2, maxY/2
 	for range ticker.C {
-		//顔を中央方向に戻す
-		if faceX > maxX/2 {
-			faceX -= xCourseGain
+		if faceX == oldX && faceY == oldY && !nodFlag {
+			//一定期間止まってたのででdefaultに戻す
+			faceX = maxX / 2
+			faceY = maxY / 2
 		} else {
-			faceX += xCourseGain
-		}
-		if faceY > maxY/2 {
-			faceY -= yCourseGain
-		} else {
-			faceY += yCourseGain
+			oldX = faceX
+			oldY = faceY
 		}
 	}
 }
@@ -89,8 +87,6 @@ func okao(c *gin.Context) {
 	ix, _ = strconv.Atoi(x)
 	iy, _ = strconv.Atoi(y)
 	updateFaceXY()
-
-	// logger.GetLogger().Info(fmt.Sprintf("faceX: %v, faceY: %v", faceX, faceY))
 }
 
 // 近くにいるかどうか
