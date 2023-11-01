@@ -59,7 +59,7 @@ func isRangeY(y, maxY int) bool {
 }
 
 func toDefaultPotision() {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 	oldX, oldY := maxX/2, maxY/2
 	for range ticker.C {
